@@ -104,7 +104,7 @@ class ReportWriter:
             html.append('<h2>Component Inventory</h2>')
             html.append('<table border="1"><tr>'
                 '<th>Component Name</th><th>Version</th><th>Description</th><th>Supplier/Vendor</th><th>License Type</th>'
-                '<th>Cryptographic Hash (SHA-256)</th><th>Direct Dependencies</th><th>Transitive Dependencies</th>'
+                '<th>Cryptographic Hash (SHA-256)</th>'
                 '<th>CVE ID</th><th>CVSS Severity Score</th><th>Exploitability Status</th><th>Remediation Guidance</th>'
                 '<th>Affected Version Range</th><th>Component Release Date</th><th>SBOM Generation Timestamp</th>'
                 '<th>SBOM Author/Tool</th><th>Criticality Rating</th><th>Is Executable (Yes/No)</th><th>Is Archive (Yes/No)</th>'
@@ -120,8 +120,6 @@ class ReportWriter:
                     f'<td>{comp.supplier or "Unknown"}</td>'
                     f'<td>{comp.license or "Unknown"}</td>'
                     f'<td>{comp.hash_sha256 or "Unknown"}</td>'
-                    f'<td>{", ".join(getattr(comp, "direct_dependencies", [])) if hasattr(comp, "direct_dependencies") else "Unknown"}</td>'
-                    f'<td>{", ".join(getattr(comp, "transitive_dependencies", [])) if hasattr(comp, "transitive_dependencies") else "Unknown"}</td>'
                     f'<td>{", ".join(comp.cve_ids) if comp.cve_ids else "N/A"}</td>'
                     f'<td>{comp.severity or "N/A"}</td>'
                     f'<td>{comp.exploitability or "N/A"}</td>'

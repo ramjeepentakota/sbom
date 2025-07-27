@@ -109,45 +109,136 @@ EXAMPLE COMMANDS:
 
     # Step 2: Generate SBOM using CycloneDX and SPDX CLI tools if available
     import subprocess
-    cyclonedx_success = False
-    spdx_success = False
-    try:
-        cyclonedx_cmd = [
-            "cyclonedx-py", "--output", os.path.join(output_dir, "sbom.cyclonedx.json"), "-i", project_path, "--format", "json"
-        ]
-        subprocess.run(cyclonedx_cmd, check=True)
-        cyclonedx_success = True
-    except Exception:
-        pass
-    try:
-        spdx_cmd = [
-            "spdx-sbom-generator", "-p", project_path, "-o", os.path.join(output_dir, "sbom.spdx.json")
-        ]
-        subprocess.run(spdx_cmd, check=True)
-        spdx_success = True
-    except Exception:
-        pass
+    # Step 2: Generate SBOM using CycloneDX and SPDX CLI tools if available (MANDATORY)
+    # Detect project type: Python (requirements.txt, Pipfile, poetry.lock) or Java (pom.xml, build.gradle, etc.)
+    cyclonedx_cmd = None
+    requirements_path = os.path.join(project_path, "requirements.txt")
+    pipfile_path = os.path.join(project_path, "Pipfile")
+    poetry_lock_path = os.path.join(project_path, "poetry.lock")
+    pom_path = os.path.join(project_path, "pom.xml")
+    gradle_path = os.path.join(project_path, "build.gradle")
+    output_path = os.path.join(output_dir, "sbom.cyclonedx.json")
+    is_python = os.path.exists(requirements_path) or os.path.exists(pipfile_path) or os.path.exists(poetry_lock_path)
 
-    # Fallback to Python implementation if CLI tools are not available
+    # Check for any .jar, .class, or .java files for traditional Java projects
+    has_java_artifacts = False
+    for root, dirs, files in os.walk(project_path):
+        for file in files:
+            if file.endswith('.jar') or file.endswith('.class') or file.endswith('.java'):
+                has_java_artifacts = True
+                break
+        if has_java_artifacts:
+            break
+
+    is_java = os.path.exists(pom_path) or os.path.exists(gradle_path) or has_java_artifacts
+
+    if is_python:
+        if os.path.exists(requirements_path):
+            cyclonedx_cmd = [
+                "cyclonedx-py", "requirements", "-o", output_path, "-r", requirements_path
+            ]
+        elif os.path.exists(pipfile_path):
+            cyclonedx_cmd = [
+                "cyclonedx-py", "pipenv", "-o", output_path, "-p", pipfile_path
+            ]
+        elif os.path.exists(poetry_lock_path):
+            cyclonedx_cmd = [
+                "cyclonedx-py", "poetry", "-o", output_path, "-l", poetry_lock_path
+            ]
+        try:
+            subprocess.run(cyclonedx_cmd, check=True)
+        except Exception as e:
+            print(f"[ERROR] CycloneDX SBOM generation failed: {e}")
+            sys.exit(1)
+    elif is_java:
+        # Use internal SBOMGenerator for Java projects (including traditional ones)
+        sbom_gen = SBOMGenerator()
+        sbom_components = scanner.to_sbom_components(sbom_gen)
+        for comp in sbom_components:
+            sbom_gen.add_component(comp)
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write(sbom_gen.to_cyclonedx_json())
+    else:
+        print("[ERROR] No supported project file found for CycloneDX (requirements.txt, Pipfile, poetry.lock, pom.xml, build.gradle, .jar, .class, .java). Aborting.")
+        sys.exit(1)
+
+    # SPDX
+    spdx_output_path = os.path.join(output_dir, "sbom.spdx.json")
+    if is_python:
+        spdx_cmd = [
+            "spdx-sbom-generator", "-p", project_path, "-o", spdx_output_path
+        ]
+        try:
+            subprocess.run(spdx_cmd, check=True)
+        except Exception as e:
+            print(f"[ERROR] SPDX SBOM generation failed: {e}")
+            sys.exit(1)
+    elif is_java:
+        # Use internal SBOMGenerator for Java projects (including traditional ones)
+        with open(spdx_output_path, 'w', encoding='utf-8') as f:
+            f.write(sbom_gen.to_spdx_json())
+    else:
+        print("[ERROR] No supported project file found for SPDX SBOM generation. Aborting.")
+        sys.exit(1)
+
+    # Step 3: Run OWASP Dependency-Check for SCA (MANDATORY)
+    import shutil
+    import zipfile
+    import requests
+    import tempfile
+
+    def update_dependency_check():
+        print("[INFO] Checking for latest OWASP Dependency-Check...")
+        api_url = "https://api.github.com/repos/jeremylong/DependencyCheck/releases/latest"
+        r = requests.get(api_url)
+        latest = r.json()
+        for asset in latest["assets"]:
+            if asset["name"].endswith("-release.zip"):
+                zip_url = asset["browser_download_url"]
+                break
+        else:
+            print("[ERROR] Could not find Dependency-Check release ZIP.")
+            sys.exit(1)
+        target_dir = os.path.join(os.path.expanduser("~"), "dependency-check-latest")
+        os.makedirs(target_dir, exist_ok=True)
+        zip_path = os.path.join(target_dir, "dependency-check.zip")
+        # Download
+        with requests.get(zip_url, stream=True) as r:
+            r.raise_for_status()
+            with open(zip_path, 'wb') as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    f.write(chunk)
+        # Extract
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(target_dir)
+        # Find the .bat file
+        for root, dirs, files in os.walk(target_dir):
+            for file in files:
+                if file.lower() == "dependency-check.bat":
+                    return os.path.join(root, file)
+        print("[ERROR] Could not find dependency-check.bat after extraction.")
+        sys.exit(1)
+
+    depcheck_exe = update_dependency_check()
+    depcheck_cmd = [
+        depcheck_exe, "--project", "SCA-Scan", "--scan", project_path, "--format", "HTML", "--out", os.path.join(output_dir, "dependency-check-report.html"),
+        "--nvdApiKey", "6d52d80f-ba6e-4036-94eb-282f91aef62d",
+        "--disableAssembly"
+    ]
+    try:
+        subprocess.run(depcheck_cmd, check=True)
+    except Exception as e:
+        err_msg = str(e)
+        print(f"[ERROR] OWASP Dependency-Check scan failed: {e}")
+        if "SAFETY" in err_msg or "CvssV4Data$ModifiedCiaType" in err_msg:
+            print("[HINT] This error is caused by a recent change in the NVD data format. Please update OWASP Dependency-Check to the latest version from https://github.com/jeremylong/DependencyCheck/releases.")
+        sys.exit(1)
+
+    # Fallback to Python implementation for SBOM (should not be reached if above succeed)
     sbom_gen = SBOMGenerator()
     sbom_components = scanner.to_sbom_components(sbom_gen)
     for comp in sbom_components:
         sbom_gen.add_component(comp)
-    if not cyclonedx_success and 'json' in output_types:
-        with open(os.path.join(output_dir, 'sbom.cyclonedx.json'), 'w', encoding='utf-8') as f:
-            f.write(sbom_gen.to_cyclonedx_json())
-    if not spdx_success and 'json' in output_types:
-        with open(os.path.join(output_dir, 'sbom.spdx.json'), 'w', encoding='utf-8') as f:
-            f.write(sbom_gen.to_spdx_json())
-
-    # Step 3: Run OWASP Dependency-Check for SCA
-    try:
-        depcheck_cmd = [
-            "dependency-check", "--project", "SCA-Scan", "--scan", project_path, "--format", "HTML", "--out", os.path.join(output_dir, "dependency-check-report.html")
-        ]
-        subprocess.run(depcheck_cmd, check=True)
-    except Exception:
-        pass
 
     # Step 4: Only use OWASP Dependency-Check for SCA
     depcheck_html_path = os.path.join(output_dir, "dependency-check-report.html")
@@ -155,6 +246,22 @@ EXAMPLE COMMANDS:
     if os.path.exists(depcheck_html_path):
         vulnerabilities = parse_depcheck_html(depcheck_html_path)
 
+    # Step 4.5: Merge vulnerability and license data into SBOM components
+    # Map vulnerabilities to SBOM components by name and version
+    comp_lookup = {(comp.name, comp.version): comp for comp in sbom_components}
+    for vuln in vulnerabilities:
+        key = (vuln.package_name, vuln.version)
+        comp = comp_lookup.get(key)
+        if comp:
+            # Add CVE ID
+            if hasattr(comp, 'cve_ids'):
+                if vuln.cve_id and vuln.cve_id not in comp.cve_ids:
+                    comp.cve_ids.append(vuln.cve_id)
+            else:
+                comp.cve_ids = [vuln.cve_id] if vuln.cve_id else []
+            # Set severity and remediation (use the most severe)
+            comp.severity = vuln.severity or getattr(comp, 'severity', None)
+            comp.remediation = vuln.remediation or getattr(comp, 'remediation', None)
     # Step 5: Compliance checks (PCI and RBI)
     for compliance_mode in ["pci", "rbi"]:
         compliance_checker = ComplianceChecker(compliance_mode)
