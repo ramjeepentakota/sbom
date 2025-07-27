@@ -112,6 +112,32 @@ class JavaScanner:
         # Add dependency components as before
         for dep in self.dependencies:
             hash_val = sbom_gen.compute_sha256(dep.file_path) if dep.file_path else None
+            import datetime
+            # Component Release Date: file's last modified time if available
+            release_date = None
+            if dep.file_path and os.path.exists(dep.file_path):
+                release_date = datetime.datetime.utcfromtimestamp(os.path.getmtime(dep.file_path)).isoformat() + "Z"
+            # SBOM Generation Timestamp: now
+            sbom_timestamp = datetime.datetime.utcnow().isoformat() + "Z"
+            # SBOM Author/Tool: constant
+            generated_by = "YSP Pvt Ltd"
+            # Policy Reference logic
+            if (dep.license or '').upper() in ["MIT", "APACHE-2.0", "BSD-3-CLAUSE", "BSD-2-CLAUSE", "NOASSERTION"]:
+                policy_reference = "https://intranet.ysp.com/policies/open-source"
+            else:
+                policy_reference = "https://intranet.ysp.com/policies/software-acquisition"
+            # Quarterly Risk Review Date: last completed quarter end (PCI/RBI best practice)
+            today = datetime.datetime.utcnow()
+            if today.month <= 3:
+                review_date = f"{today.year-1}-12-31"
+            elif today.month <= 6:
+                review_date = f"{today.year}-03-31"
+            elif today.month <= 9:
+                review_date = f"{today.year}-06-30"
+            else:
+                review_date = f"{today.year}-09-30"
+            # SBOM Audit Trail Reference: original value (timestamp|name|version|file_path)
+            audit_trail_reference = f"{sbom_timestamp}|{dep.name}|{dep.version}|{dep.file_path or ''}"
             comp = SBOMComponent(
                 name=dep.name,
                 version=dep.version,
@@ -119,7 +145,13 @@ class JavaScanner:
                 supplier=dep.supplier or "NOASSERTION",
                 file_path=dep.file_path or "",
                 hash_sha256=hash_val or "",
-                component_type="library"
+                component_type="library",
+                release_date=release_date or "Unknown",
+                sbom_timestamp=sbom_timestamp,
+                generated_by=generated_by,
+                policy_reference=policy_reference,
+                quarterly_risk_review_date=review_date,
+                sbom_audit_trail_reference=audit_trail_reference
             )
             components.append(comp)
         # Add every file as a component (if not already added)

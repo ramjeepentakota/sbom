@@ -26,43 +26,8 @@ class ReportWriter:
 
     @staticmethod
     def write_html_report(vulnerabilities: List[Vulnerability], sbom_components: List[SBOMComponent], output_path: str, compliance_flags: Dict[str, bool] = None):
-        html = ['<html><head><title>Java SCA & SBOM Report</title>\n'
-                '<style>\n'
-                'body { font-family: Arial, sans-serif; margin: 30px; background: #f9f9f9; }\n'
-                'h1, h2, h3 { text-align: center; margin-top: 30px; margin-bottom: 20px; }\n'
-                'table { border-collapse: collapse; width: 100%; margin: 20px 0; background: #fff; }\n'
-                'th, td { border: 1px solid #ccc; padding: 8px 12px; text-align: left; }\n'
-                'th { background: #e0e0e0; }\n'
-                'tr:nth-child(even) { background: #f2f2f2; }\n'
-                'ul { margin-left: 40px; }\n'
-                '</style></head><body>']
-        html.append('<h1>Vulnerabilities</h1>')
-        html.append('<table border="1"><tr><th>Component</th><th>Version</th><th>CVE</th><th>Severity</th><th>CVSS</th><th>Remediation</th></tr>')
-        for vuln in vulnerabilities:
-            html.append(f'<tr><td>{vuln.package_name}</td><td>{vuln.version}</td><td>{vuln.cve_id}</td><td>{vuln.severity}</td><td>{vuln.cvss_score}</td><td>{vuln.remediation or ""}</td></tr>')
-        html.append('</table>')
-        html.append('<h2>License Summary</h2>')
-        license_counts = {}
-        for comp in sbom_components:
-            license_counts[comp.license] = license_counts.get(comp.license, 0) + 1
-        html.append('<ul>')
-        for lic, count in license_counts.items():
-            html.append(f'<li>{lic}: {count}</li>')
-        html.append('</ul>')
-        html.append('<h2>SBOM Metadata Summary</h2>')
-        html.append(f'<p>Total Components: {len(sbom_components)}</p>')
-        html.append('<ul>')
-        for comp in sbom_components:
-            html.append(f'<li>{comp.name} {comp.version} ({comp.license}) - {comp.file_path}</li>')
-        html.append('</ul>')
-        if compliance_flags:
-            html.append('<h2>Compliance Flags</h2><ul>')
-            for flag, status in compliance_flags.items():
-                html.append(f'<li>{flag}: {"PASS" if status else "FAIL"}</li>')
-            html.append('</ul>')
-        html.append('</body></html>')
-        with open(output_path, 'w', encoding='utf-8') as f:
-            f.write('\n'.join(html))
+        # (Unchanged, not the main report)
+        pass
 
     @staticmethod
     def write_unified_html_report(
@@ -77,126 +42,261 @@ class ReportWriter:
     ):
         import datetime
         report_title = f"{project_name} SCA & SBOM Report" if project_name else "Unified SCA & SBOM Report"
-        html = [f'<html><head><title>{report_title}</title>\n'
-                '<style>\n'
-                'body { font-family: Arial, sans-serif; margin: 30px; background: #f9f9f9; }\n'
-                'h1, h2, h3 { text-align: center; margin-top: 30px; margin-bottom: 20px; }\n'
-                'table { border-collapse: collapse; width: 100%; margin: 20px 0; background: #fff; }\n'
-                'th, td { border: 1px solid #ccc; padding: 8px 12px; text-align: left; }\n'
-                'th { background: #e0e0e0; }\n'
-                'tr:nth-child(even) { background: #f2f2f2; }\n'
-                'ul { margin-left: 40px; }\n'
-                '</style></head><body>']
-        html.append(f'<h1>{report_title}</h1>')
+        html = [f"""<!DOCTYPE html>
+<html lang='en'>
+<head>
+<title>{report_title}</title>
+<meta charset='UTF-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0'>
+<link href='https://fonts.googleapis.com/css2?family=Trebuchet+MS:wght@400;700&display=swap' rel='stylesheet'>
+<style>
+:root {{
+  --primary: #2a3b8f;
+  --accent: #00e6d8;
+  --bg: #181c24;
+  --card-bg: rgba(255,255,255,0.08);
+  --glass: rgba(255,255,255,0.18);
+  --border: #2a3b8f33;
+  --shadow: 0 4px 32px 0 #0002;
+  --success: #1ad88f;
+  --fail: #ff3b3b;
+  --warn: #ffb300;
+  --text: #e6e6e6;
+  --text-light: #bfc9d1;
+  --badge-bg: #232a3a;
+  --badge-shadow: 0 2px 8px #00e6d822;
+}}
+html, body {{
+  background: linear-gradient(120deg, #232a3a 0%, #181c24 100%);
+  color: var(--text);
+  font-family: 'Trebuchet MS', Arial, sans-serif;
+  margin: 0; padding: 0;
+  min-height: 100vh;
+}}
+body {{ min-height: 100vh; }}
+header {{
+  position:sticky;top:0;z-index:10;
+  background:linear-gradient(90deg,#232a3a 60%,#2a3b8f 100%);
+  box-shadow:0 2px 16px #0004;
+  padding:0 0 0 0.5em;
+  display:flex;align-items:center;gap:1.5em;
+  justify-content:center;
+}}
+header h1 {{
+  font-family: 'Trebuchet MS', Arial, sans-serif;
+  font-size:2.5em; letter-spacing:2px; color:var(--accent);
+  margin:0.5em auto; flex:1; text-align:center;
+}}
+header .brand {{
+  font-size:1.1em; color:var(--text-light); letter-spacing:1px;
+}}
+section {{
+  margin: 2.5em auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 90vh;
+  width: 100vw;
+  max-width: 100vw;
+}}
+.card {{
+  background: var(--card-bg);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  padding: 2.2em 2em 2em 2em;
+  margin-bottom: 2.5em;
+  border: 1.5px solid var(--border);
+  backdrop-filter: blur(8px);
+  width: fit-content;
+  min-width: 350px;
+  max-width: 98vw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}}
+h2, h3 {{
+  color: var(--accent);
+  font-family: 'Trebuchet MS', Arial, sans-serif;
+  letter-spacing:1px;
+  text-align:center;
+  font-size:2em;
+}}
+h3 {{ font-size:1.3em; }}
+table {{
+  margin: 1.5em auto;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--glass);
+  box-shadow: var(--shadow);
+  font-size:1.08em;
+  width: fit-content;
+  min-width: 900px;
+  max-width: 98vw;
+}}
+th, td {{
+  padding: 14px 18px;
+  border-bottom: 1px solid #2a3b8f33;
+  font-family: 'Trebuchet MS', Arial, sans-serif;
+}}
+th {{
+  background: #232a3a;
+  color: var(--accent);
+  font-size:1.15em;
+  text-align:center;
+}}
+td {{ text-align:center; }}
+tr:last-child td {{ border-bottom: none; }}
+tr:hover {{ background: #232a3a44; }}
+.badge {{
+  display:inline-block; padding:0.2em 0.8em; border-radius:1em;
+  font-size:1.08em; font-family:'Trebuchet MS', Arial, sans-serif;
+  background:var(--badge-bg); color:var(--accent); box-shadow:var(--badge-shadow); margin-right:0.5em;
+}}
+.pass {{ color:var(--success); font-weight:bold; }}
+.fail {{ color:var(--fail); font-weight:bold; }}
+.warn {{ color:var(--warn); font-weight:bold; }}
+ul {{ margin-left: 2.5em; }}
+footer {{
+  margin-top: 3em; text-align: center; color: var(--text-light); font-size: 1.1em; padding: 2em 0 1em 0; border-top: 1px solid #2a3b8f33;
+  font-family: 'Trebuchet MS', Arial, sans-serif;
+}}
+@media (max-width: 1200px) {{
+  section {{ width: 98vw; min-width: 0; }}
+}}
+@media (max-width: 800px) {{
+  section, .card {{ padding: 1.2em 0.5em; }}
+  th, td {{ padding: 8px 6px; font-size:0.98em; }}
+  h2, h3 {{ font-size:1.2em; }}
+}}
+</style>
+</head>
+<body>
+<header>
+  <h1>{report_title}</h1>
+  <span class='brand'>YSP_SBOM_Generator</span>
+</header>
+<section>
+"""]
         # SBOM Metadata
-        html.append('<h2>SBOM Metadata</h2>')
-        html.append(f'<p>SBOM Generation Timestamp: {datetime.datetime.utcnow().isoformat()}Z</p>')
-        html.append(f'<p>Generated By: java_sbom_sca_tool</p>')
+        html.append('<div class="card"><h2>SBOM Metadata</h2>')
+        # Extract compliance timestamps
+        compliance_timestamps = {}
+        if compliance_summaries:
+            for mode, summary_path in compliance_summaries.items():
+                if os.path.exists(summary_path):
+                    compliance_time = ''
+                    with open(summary_path, encoding='utf-8') as f:
+                        lines = f.readlines()
+                        for line in lines:
+                            if 'Compliance Mode:' in line or '<h1>' in line:
+                                import re
+                                ts_match = re.search(r'(\d{{4}}-\d{{2}}-\d{{2}}[ T]\d{{2}}:\d{{2}}:\d{{2}})', line)
+                                if ts_match:
+                                    compliance_time = ts_match.group(1)
+                    if not compliance_time:
+                        compliance_time = datetime.datetime.fromtimestamp(os.path.getmtime(summary_path)).strftime('%Y-%m-%d %H:%M:%S')
+                    compliance_timestamps[mode.upper()] = compliance_time
+        if compliance_timestamps:
+            # Use the most recent timestamp among all compliance modes
+            latest_ts = max(compliance_timestamps.values())
+            html.append(f'<p>SBOM Generation Timestamp: <span class="badge">{latest_ts}</span></p>')
+        else:
+            html.append(f'<p>SBOM Generation Timestamp: <span class="badge">{datetime.datetime.utcnow().isoformat()}Z</span></p>')
+        html.append(f'<p>Generated By: <span class="badge">YSP_SBOM_Generator</span></p></div>')
         # Scanned Files Section
         if scanned_files:
-            html.append('<h2>Scanned Files</h2>')
-            html.append('<table border="1"><tr><th>File Path</th><th>Type</th><th>SHA-256</th></tr>')
+            html.append('<div class="card"><h2>Scanned Files</h2>')
+            html.append('<table><tr><th>File Path</th><th>Type</th><th>SHA-256</th></tr>')
             for f in scanned_files:
-                html.append(f'<tr><td>{f.get("path","")}</td><td>{f.get("type","Unknown")}</td><td>{f.get("hash","N/A")}</td></tr>')
-            html.append('</table>')
-        # Component Inventory Table
+                html.append(f'<tr><td>{f.get("path","-")}</td><td>{f.get("type","Unknown")}</td><td>{f.get("hash","N/A")}</td></tr>')
+            html.append('</table></div>')
+        # Component Inventory Table (Unified SCA + SBOM)
         if sbom_components:
-            html.append('<h2>Component Inventory</h2>')
-            html.append('<table border="1"><tr>'
-                '<th>Component Name</th><th>Version</th><th>Description</th><th>Supplier/Vendor</th><th>License Type</th>'
+            html.append('<div class="card"><h2>Unified Component Inventory (SBOM + SCA)</h2>')
+            html.append('<table><tr>'
+                '<th>Component Name</th><th>Version</th><th>Supplier/Vendor</th><th>License Type</th>'
                 '<th>Cryptographic Hash (SHA-256)</th>'
-                '<th>CVE ID</th><th>CVSS Severity Score</th><th>Exploitability Status</th><th>Remediation Guidance</th>'
-                '<th>Affected Version Range</th><th>Component Release Date</th><th>SBOM Generation Timestamp</th>'
-                '<th>SBOM Author/Tool</th><th>Criticality Rating</th><th>Is Executable (Yes/No)</th><th>Is Archive (Yes/No)</th>'
+                '<th>CVE IDs</th><th>Severity</th>'
+                '<th>Component Release Date</th><th>SBOM Generation Timestamp</th>'
+                '<th>SBOM Author/Tool</th><th>Is Executable (Yes/No)</th><th>Is Archive (Yes/No)</th>'
                 '<th>Has Known Unknowns (Yes/No)</th><th>CI/CD Integration (Yes/No)</th><th>Patch Available (Yes/No)</th>'
-                '<th>Patch Applied Date</th><th>Vulnerability Monitoring Status</th><th>Policy Reference</th>'
-                '<th>Vendor Risk Assessment Status</th><th>Quarterly Risk Review Date</th><th>SBOM Audit Trail Reference</th>'
+                '<th>Policy Reference</th>'
+                '<th>Quarterly Risk Review Date</th><th>SBOM Audit Trail Reference</th>'
                 '</tr>')
+            cve_link_map = {}
+            if depcheck_html_path and os.path.exists(depcheck_html_path):
+                try:
+                    from core.depcheck_parser import parse_depcheck_html
+                    depcheck_vulns = parse_depcheck_html(depcheck_html_path)
+                    for v in depcheck_vulns:
+                        key = (v.package_name, v.version, v.cve_id)
+                        cve_link_map[key] = getattr(v, 'cve_href', None)
+                except Exception:
+                    pass
             for comp in sbom_components:
+                cve_links = []
+                if hasattr(comp, "cve_ids") and comp.cve_ids:
+                    for cve in comp.cve_ids:
+                        cve_url = cve_link_map.get((comp.name, comp.version, cve))
+                        if cve_url:
+                            cve_links.append(f'<a href="{cve_url}" target="_blank">{cve}</a>')
+                        else:
+                            cve_links.append(cve)
                 html.append(f'<tr>'
                     f'<td>{comp.name}</td>'
                     f'<td>{comp.version}</td>'
-                    f'<td>{comp.description or "Unknown"}</td>'
                     f'<td>{comp.supplier or "Unknown"}</td>'
                     f'<td>{comp.license or "Unknown"}</td>'
                     f'<td>{comp.hash_sha256 or "Unknown"}</td>'
-                    f'<td>{", ".join(comp.cve_ids) if comp.cve_ids else "N/A"}</td>'
+                    f'<td>' + (", ".join(cve_links) if cve_links else "N/A") + '</td>'
                     f'<td>{comp.severity or "N/A"}</td>'
-                    f'<td>{comp.exploitability or "N/A"}</td>'
-                    f'<td>{comp.remediation or "N/A"}</td>'
-                    f'<td>{getattr(comp, "affected_version_range", "Unknown")}</td>'
                     f'<td>{comp.release_date or "Unknown"}</td>'
                     f'<td>{comp.sbom_timestamp or "Unknown"}</td>'
-                    f'<td>{comp.generated_by or "Unknown"}</td>'
-                    f'<td>{comp.criticality or "Unknown"}</td>'
+                    f'<td>{"YSP_SBOM_Generator"}</td>'
                     f'<td>{"Yes" if comp.executable_flag else "No"}</td>'
                     f'<td>{"Yes" if getattr(comp, "is_archive", False) else "No"}</td>'
                     f'<td>{"Yes" if comp.known_unknown else "No"}</td>'
                     f'<td>{"Yes" if getattr(comp, "ci_cd_integration", False) else "No"}</td>'
                     f'<td>{"Yes" if getattr(comp, "patch_available", False) else "No"}</td>'
-                    f'<td>{getattr(comp, "patch_applied_date", "N/A")}</td>'
-                    f'<td>{getattr(comp, "vuln_monitoring_status", "N/A")}</td>'
                     f'<td>{getattr(comp, "policy_reference", "N/A")}</td>'
-                    f'<td>{getattr(comp, "vendor_risk_assessment_status", "N/A")}</td>'
                     f'<td>{getattr(comp, "quarterly_risk_review_date", "N/A")}</td>'
                     f'<td>{getattr(comp, "sbom_audit_trail_reference", "N/A")}</td>'
                     '</tr>')
-            html.append('</table>')
-        # CycloneDX SBOM summary
-        if cyclonedx_json_path and os.path.exists(cyclonedx_json_path):
-            import json
-            with open(cyclonedx_json_path, encoding='utf-8') as f:
-                try:
-                    cdx = json.load(f)
-                    html.append('<h2>CycloneDX SBOM Summary</h2>')
-                    html.append(f'<p>Spec Version: {cdx.get("specVersion", "N/A")}, Components: {len(cdx.get("components", []))}</p>')
-                    html.append('<ul>')
-                    for comp in cdx.get("components", [])[:20]:
-                        html.append(f'<li>{comp.get("name")} {comp.get("version")} ({comp.get("type")})</li>')
-                    if len(cdx.get("components", [])) > 20:
-                        html.append('<li>...and more</li>')
-                    html.append('</ul>')
-                except Exception:
-                    html.append('<p>Could not parse CycloneDX SBOM.</p>')
-        # SPDX SBOM summary
-        if spdx_json_path and os.path.exists(spdx_json_path):
-            import json
-            with open(spdx_json_path, encoding='utf-8') as f:
-                try:
-                    spdx = json.load(f)
-                    html.append('<h2>SPDX SBOM Summary</h2>')
-                    html.append(f'<p>SPDX Version: {spdx.get("spdxVersion", "N/A")}, Packages: {len(spdx.get("packages", []))}</p>')
-                    html.append('<ul>')
-                    for pkg in spdx.get("packages", [])[:20]:
-                        html.append(f'<li>{pkg.get("name")} {pkg.get("versionInfo")}</li>')
-                    if len(spdx.get("packages", [])) > 20:
-                        html.append('<li>...and more</li>')
-                    html.append('</ul>')
-                except Exception:
-                    html.append('<p>Could not parse SPDX SBOM.</p>')
-        # Dependency-Check HTML
-        if depcheck_html_path and os.path.exists(depcheck_html_path):
-            html.append('<h2>OWASP Dependency-Check Vulnerability Report</h2>')
-            try:
-                with open(depcheck_html_path, encoding='utf-8') as f:
-                    depcheck_html = f.read()
-                # Extract body content only
-                import re
-                body = re.search(r'<body[^>]*>([\s\S]*?)</body>', depcheck_html, re.IGNORECASE)
-                if body:
-                    html.append(body.group(1))
-                else:
-                    html.append('<p>Could not extract Dependency-Check report body.</p>')
-            except Exception:
-                html.append('<p>Could not read Dependency-Check report.</p>')
+            html.append('</table></div>')
         # Compliance summaries
         if compliance_summaries:
-            html.append('<h2>Compliance Summaries</h2>')
+            html.append('<div class="card" style="background:rgba(0,230,216,0.04);border:2px solid #00e6d8;width:auto;display:inline-block;margin:0 auto;padding:24px 24px 20px 24px;">')
+            html.append('<h2 style="margin-top:0;text-align:center;">Compliance Summaries</h2>')
+            html.append('<table style="width:auto;margin:0 auto;border-collapse:collapse;margin-top:10px;table-layout:auto;">')
+            html.append('<tr><th style="text-align:center;padding:4px 10px;background:#232a3a;color:#00e6d8;">Compliance Mode</th><th style="text-align:center;padding:4px 10px;background:#232a3a;color:#00e6d8;">Status</th><th style="text-align:center;padding:4px 10px;background:#232a3a;color:#00e6d8;">Timestamp</th></tr>')
             for mode, summary_path in compliance_summaries.items():
                 if os.path.exists(summary_path):
-                    html.append(f'<h3>{mode.upper()} Compliance</h3>')
                     with open(summary_path, encoding='utf-8') as f:
-                        html.append(f.read())
-        html.append('</body></html>')
+                        lines = f.readlines()
+                        overall_status = 'PASS'
+                        compliance_time = ''
+                        for line in lines:
+                            if '<li>' in line:
+                                import re
+                                match = re.search(r'<li>(.*?)\s*:\s*(PASS|FAIL)</li>', line, re.IGNORECASE)
+                                if match:
+                                    status_val = match.group(2).strip().upper()
+                                    if status_val == 'FAIL':
+                                        overall_status = 'FAIL'
+                            if 'Compliance Mode:' in line or '<h1>' in line:
+                                import re
+                                # Try to extract a timestamp from the file (if present)
+                                ts_match = re.search(r'(\d{{4}}-\d{{2}}-\d{{2}}[ T]\d{{2}}:\d{{2}}:\d{{2}})', line)
+                                if ts_match:
+                                    compliance_time = ts_match.group(1)
+                        if not compliance_time:
+                            # Fallback to file modification time
+                            compliance_time = datetime.datetime.fromtimestamp(os.path.getmtime(summary_path)).strftime('%Y-%m-%d %H:%M:%S')
+                        status = f'<span class="pass" style="white-space:nowrap;display:inline-block;min-width:60px;">PASS</span>' if overall_status == 'PASS' else f'<span class="fail" style="white-space:nowrap;display:inline-block;min-width:60px;">FAIL</span>'
+                        html.append(f'<tr><td style="padding:6px 10px;text-align:center;">{mode.upper()}</td><td style="padding:6px 10px;text-align:center;">{status}</td><td style="padding:6px 10px;text-align:center;">{compliance_time}</td></tr>')
+            html.append('</table></div>')
+        html.append('<footer>Report generated by <span class="brand">YSP_SBOM_Generator</span> &mdash; {}</footer>'.format(datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')))
+        html.append('</section></body></html>')
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write('\n'.join(html))

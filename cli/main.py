@@ -247,21 +247,30 @@ EXAMPLE COMMANDS:
         vulnerabilities = parse_depcheck_html(depcheck_html_path)
 
     # Step 4.5: Merge vulnerability and license data into SBOM components
-    # Map vulnerabilities to SBOM components by name and version
+    # For each SBOM component, collect all CVE IDs from matching vulnerabilities
+    if os.path.exists(depcheck_html_path):
+        for comp in sbom_components:
+            # Find all vulnerabilities matching this component (by name and version)
+            cve_ids = [v.cve_id for v in vulnerabilities if v.package_name == comp.name and v.version == comp.version]
+            # Fallback: also match by partial file_path if no direct match
+            if not cve_ids:
+                cve_ids = [v.cve_id for v in vulnerabilities if v.package_name.lower() in (comp.file_path or '').lower()]
+            comp.cve_ids = list(sorted(set(cve_ids)))
+    # Merge severity/remediation as before
     comp_lookup = {(comp.name, comp.version): comp for comp in sbom_components}
     for vuln in vulnerabilities:
         key = (vuln.package_name, vuln.version)
         comp = comp_lookup.get(key)
+        if not comp:
+            for c in sbom_components:
+                if vuln.package_name.lower() in c.file_path.lower():
+                    comp = c
+                    break
         if comp:
-            # Add CVE ID
-            if hasattr(comp, 'cve_ids'):
-                if vuln.cve_id and vuln.cve_id not in comp.cve_ids:
-                    comp.cve_ids.append(vuln.cve_id)
-            else:
-                comp.cve_ids = [vuln.cve_id] if vuln.cve_id else []
-            # Set severity and remediation (use the most severe)
             comp.severity = vuln.severity or getattr(comp, 'severity', None)
             comp.remediation = vuln.remediation or getattr(comp, 'remediation', None)
+            comp.exploitability = getattr(vuln, 'exploitability', None) or getattr(comp, 'exploitability', None)
+            comp.affected_version_range = getattr(vuln, 'affected_version_range', None) or getattr(comp, 'affected_version_range', None)
     # Step 5: Compliance checks (PCI and RBI)
     for compliance_mode in ["pci", "rbi"]:
         compliance_checker = ComplianceChecker(compliance_mode)

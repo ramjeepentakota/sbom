@@ -22,7 +22,10 @@ class SBOMComponent:
         exploitability: str = None,
         remediation: str = None,
         sbom_timestamp: str = None,
-        generated_by: str = None
+        generated_by: str = None,
+        policy_reference: str = None,
+        quarterly_risk_review_date: str = None,
+        sbom_audit_trail_reference: str = None
     ):
         self.name = name
         self.version = version
@@ -42,6 +45,9 @@ class SBOMComponent:
         self.remediation = remediation
         self.sbom_timestamp = sbom_timestamp
         self.generated_by = generated_by
+        self.policy_reference = policy_reference
+        self.quarterly_risk_review_date = quarterly_risk_review_date
+        self.sbom_audit_trail_reference = sbom_audit_trail_reference
         self.dependencies = []  # List of component names (or IDs)
 
     def to_cyclonedx(self):
