@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audit Report - YSP Payments</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-black: #111;
+            --accent-gold: #ffb600;
+            --nav-bg: #fff;
+            --nav-link: #111;
+            --nav-link-hover: #ffb600;
+            --body-bg: #fff;
+            --card-bg: #fff;
+            --card-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            --footer-bg: #fff;
+            --footer-text: #111;
+        }
+        body {
+            font-family: 'Montserrat', Arial, sans-serif;
+            background: var(--body-bg);
+            margin: 0;
+            padding: 0;
+            color: var(--primary-black);
+        }
+        .navbar {
+            background: var(--nav-bg);
+            display: flex;
+            align-items: center;
+            padding: 0 1rem;
+            min-height: 70px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            position: relative;
+        }
+        .navbar-vertical {
+            flex-direction: row;
+        }
+        .navbar .logo {
+            display: flex;
+            align-items: center;
+        }
+        .navbar .logo img {
+            height: 44px;
+            margin-right: 1rem;
+        }
+        .navbar-center {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            margin: 0;
+        }
+        .navbar-title {
+            text-align: center;
+            font-size: 1.7rem;
+            font-weight: 700;
+            color: var(--primary-black);
+            margin-bottom: 0.2em;
+        }
+        .sbom-timestamp {
+            font-size: 1.1em;
+            color: #444;
+            margin-bottom: 0.2em;
+        }
+        .navbar-desc {
+            font-size: 1.1em;
+            color: #444;
+            text-align: center;
+        }
+        .navbar nav {
+            margin-left: auto;
+            display: flex;
+            gap: 2rem;
+        }
+        .navbar nav a {
+            color: var(--nav-link);
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 1rem;
+            transition: color 0.2s;
+        }
+        .navbar nav a:hover {
+            color: var(--nav-link-hover);
+        }
+        .hero {
+            background: #fff;
+            color: var(--primary-black);
+            padding: 3rem 2rem 2rem 2rem;
+            text-align: center;
+            border-bottom: 4px solid var(--accent-gold);
+        }
+        .hero p {
+            font-size: 1.2rem;
+            margin: 0 0 1.5rem 0;
+            color: var(--primary-black);
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto 1rem auto;
+            padding: 0;
+        }
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            padding: 2rem 2.5rem;
+            margin-bottom: 2rem;
+        }
+        .btn-primary {
+            background: var(--accent-gold);
+            color: var(--primary-black);
+            border: none;
+            padding: 0.9rem 2rem;
+            border-radius: 6px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.2s;
+            box-shadow: 0 2px 8px rgba(255,182,0,0.08);
+        }
+        .btn-primary:hover {
+            background: #fff3cd;
+            color: var(--primary-black);
+            border: 1px solid var(--accent-gold);
+        }
+        .section-title {
+            color: var(--primary-black);
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            border-left: 6px solid var(--accent-gold);
+            padding-left: 0.5rem;
+        }
+        .footer {
+            background: var(--footer-bg);
+            color: var(--footer-text);
+            text-align: center;
+            padding: 1.5rem 0 0.5rem 0;
+            font-size: 1rem;
+            margin-top: 2rem;
+            border-top: 2px solid var(--accent-gold);
+        }
+        /* Table Styling */
+.report-table {
+    width: 100%;
+    margin: 0 auto;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: #fff;
+    margin-top: 1.5rem;
+    font-size: 1rem;
+    table-layout: auto;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+    border-radius: 12px;
+    overflow: visible;
+}
+
+.report-table th,
+.report-table td {
+  border: 1px solid #e0e6ef;
+  padding: 0.75rem 0.7rem;
+  text-align: left;
+  vertical-align: top;
+  white-space: nowrap !important;
+  font-size: 1em;
+  background: none;
+  width: auto !important;
+  height: auto !important;
+  /* Ensure rows auto-expand for wrapped content */
+  line-height: 1.4;
+}
+.report-table th:first-child, .report-table td:first-child {
+  min-width: unset;
+}
+
+/* Force left alignment for key textual columns for better readability */
+.report-table td:nth-child(1),  /* Component Name */
+.report-table td:nth-child(2),  /* Version */
+.report-table td:nth-child(3),  /* Description */
+.report-table td:nth-child(4),  /* Supplier */
+.report-table td:nth-child(5),  /* License */
+.report-table td:nth-child(6),  /* Origin */
+.report-table td:nth-child(8),  /* Patch Status */
+.report-table td:nth-child(9),  /* Release Date */
+.report-table td:nth-child(10), /* End of Life Date */
+.report-table td:nth-child(11), /* Criticality */
+.report-table td:nth-child(12)  /* Usage Restrictions */ {
+  text-align: left !important;
+}
+
+.report-table th:nth-child(1),
+.report-table th:nth-child(2),
+.report-table th:nth-child(3),
+.report-table th:nth-child(4),
+.report-table th:nth-child(5),
+.report-table th:nth-child(6),
+.report-table th:nth-child(8),
+.report-table th:nth-child(9),
+.report-table th:nth-child(10),
+.report-table th:nth-child(11),
+.report-table th:nth-child(12) {
+  text-align: left !important;
+}
+.report-table tr {
+  height: auto !important;
+}
+/* Remove any width constraints on last column */
+.report-table td:last-child, .report-table th:last-child {
+    width: auto !important;
+}
+
+.report-table th {
+    background: var(--accent-gold);
+    color: var(--primary-black);
+    font-weight: 700;
+    border-bottom: 3px solid #fff3cd;
+    
+}
+
+.report-table tr:nth-child(even) td {
+    background: #fffbe6;
+}
+
+.report-table tr:nth-child(odd) td {
+    background: #fff;
+}
+
+.report-table tr:hover td {
+    background: #fff3cd;
+    transition: background 0.2s;
+}
+
+.table-responsive {
+    width: auto;
+    overflow-x: visible;
+    margin: 0;
+    padding: 0;
+}
+
+        @media (max-width: 900px) {
+            .report-table th, .report-table td {
+                font-size: 0.97em;
+                padding: 0.5rem 0.3rem;
+            }
+            .container {
+                padding: 0 0.5rem;
+            }
+            .card {
+                padding: 1rem 0.7rem;
+            }
+        }
+        @media (max-width: 700px) {
+            .hero h1 {
+                font-size: 1.5rem;
+            }
+            .report-table th, .report-table td {
+                font-size: 0.93em;
+                padding: 0.4rem 0.15rem;
+            }
+        }
+        /* Ensure table rows and cells auto-adjust to content */
+        .report-table th, .report-table td {
+            white-space: nowrap !important;
+            vertical-align: top !important;
+            height: auto !important;
+            min-width: 0 !important;
+            max-width: none !important;
+        }
+        .report-table tr {
+            height: auto !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar navbar-vertical">
+        <div class="logo">
+            <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiByeD0iMTIiIGZpbGw9IiNmZmI2MDAiLz4KPHBhdGggZD0iTTMwIDQ1IEMzOS4yMDUgNDUgNDcgMzcuMjA1IDQ3IDI4IEM0NyAxOC43OTUgMzkuMjA1IDExIDMwIDExIEMyMC43OTUgMTEgMTMgMTguNzk1IDEzIDI4IEMxMyAzNy4yMDUgMjAuNzk1IDQ1IDMwIDQ1IFoiIGZpbGw9IiMxMTExMTEiLz4KPHRleHQgeD0iMzAiIHk9IjM1IiBmb250LXNpemU9IjE2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjZmZmIj5ZU1A8L3RleHQ+Cjwvc3ZnPgo=" alt="Logo" style="height:54px;">
+        </div>
+        <div class="navbar-center">
+            <div class="navbar-title">{{ project_name }} SBOM Report</div>
+            <div class="sbom-timestamp" id="sbom-timestamp">Report generated on: {{ report_generated_on }}</div>
+            <div class="navbar-desc">Software Bill of Materials (SBOM) vulnerability and license audit.</div>
+            <hr style="width:100%;border:0;border-top:2px solid #eee;margin:16px 0 0 0;">
+        </div>
+    </div>
+    <div class="container">
+        <!--<div class="card"> -->
+            <div class="section-title">Recent Reports</div>
+            <div class="table-responsive">
+                <table class="report-table">
+                    <colgroup>
+                        <col class="col-cveid">
+                        <col class="col-status">
+                        <col class="col-desc">
+                        <col class="col-date">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>CVE ID</th>
+                            <th>Status</th>
+                            <th>Description</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>CVE-2024-12345</td>
+                            <td><span style="color: #fff; font-weight: 600; background: var(--accent-gold); padding: 0.2em 0.7em; border-radius: 4px;">Completed</span></td>
+                            <td>This is a sample audit report with a long description to demonstrate text wrapping in the table cell. All content will wrap properly and remain readable.</td>
+                            <td>2024-06-01</td>
+                        </tr>
+                        <tr>
+                            <td>CVE-2024-23456, CVE-2024-23457</td>
+                            <td><span style="color: var(--primary-black); font-weight: 600; background: var(--accent-gold); padding: 0.2em 0.7em; border-radius: 4px;">In Progress</span></td>
+                            <td>This report is currently being generated. The table layout ensures that even long text will not overflow but wrap within the cell.</td>
+                            <td>2024-06-02</td>
+                        </tr>
+                        <tr>
+                            <td>CVE-2024-99999, CVE-2024-88888, CVE-2024-77777</td>
+                            <td><span style="color: #fff; font-weight: 600; background: var(--accent-gold); padding: 0.2em 0.7em; border-radius: 4px;">Completed</span></td>
+                            <td>Multiple CVEs are listed here to show that the column will expand as needed and wrap text only if the content is too long for the screen.</td>
+                            <td>2024-06-03</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        <!--</div>-->
+        <div class="card">
+            <div class="section-title">About This Tool</div>
+            <p>This tool provides a comprehensive audit report for your software bill of materials (SBOM). The UI is designed to reflect the YSP Payments website for a seamless and professional experience.</p>
+        </div>
+    </div>
+    <!-- COMPLIANCE_SUMMARY -->
+    <div class="footer">
+        &copy; 2024 YSP Payments. All rights reserved.
+    </div>
+</body>
+</html>
